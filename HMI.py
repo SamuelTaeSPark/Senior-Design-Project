@@ -3,31 +3,6 @@ import tkinter as tk
 
 button_states = {}
 
-# ========================== 3/14/2025 addition ==========================
-# to be changed and implemented
-# Button states dictionary (tracks the state of each button)
-'''
-color_states = [
-    ("black", "cyan"),       # 0
-    ("black", "darkorange"), # 1
-    ("black", "green"),      # 2
-    ("black", "gray"),       # 3
-    ("black", "lightgreen"), # 4
-    ("black", "orange"),     # 5
-    ("black", "red"),        # 6
-    ("black", "white")]      # 7
-
-color_keys = {
-    "3_state": [3, 7, 4],  # Uses indexes from color_states
-    "4_state": [3, 7, 4, 1],
-    "icon_3state_orange": [3, 5, 5],
-    "icon_3state_red": [3, 2, 6],
-    "icon_3state_green": [3, 2, 3],
-    "icon_state": [3, 7, 0]
-}
-'''
-# ========================== 3/14/2025 addition ==========================
-
 # Define color states
 colors_4_state = [("black", "gray"), # State 0: Black background, gray text
                   ("black", "white"), # State 1: black background, white text
@@ -106,25 +81,6 @@ def add_button_text(frame, text_stuff, button_width, button_height):
 def add_button_image(frame, img_stuff):
     button = tk.Button(frame, image=img_stuff, borderwidth=10, highlightthickness=0)
     button.pack(pady=5)
-
-def check_if_button_can_do_something(button, button_id, fg_blink_color,button_press):
-    # AIN, (automatic intersection navigation) check: v2x, ACC, & speed < 35
-    if button_pressed == 0:
-        toggle_4_button_grid(button, button_id, fg_blink_color,button_press)
-    # DMS, (driver monitoring system), check:
-    elif button_pressed == 1:
-        toggle_3_button_grid(button, button_id, fg_blink_color)
-    # DYNO, check: ??
-    elif button_pressed == 2:
-        toggle_3_button_grid(button, button_id, fg_blink_color)
-    # LCC, (lane centering control) check: lateral switch, ACC, lane detected, speed < 35, centered in lane
-    elif button_pressed == 3:
-        toggle_4_button_grid(button, button_id, fg_blink_color,button_press)
-    # ACC/CACC, (Adaptive Cruise Control/Eco-Cooperative Adaptive Cruise), check: longitudinal & v2x switch, ACC button press
-    elif button_pressed == 4:
-        #toggling buttons
-        toggle_4_button_grid(button, button_id, fg_blink_color,button_press)
-
 
 def toggle_3_button(button, button_id):
     """Toggle button color and text between three states."""
