@@ -29,7 +29,7 @@ color_keys = {
 
 default_fault_messages_text = "No Messages"
 
-# ============= Global Variables =======================
+# ================================= Global Variables =================================
 fault_messages_text = default_fault_messages_text
 
 speed_var = 0
@@ -41,10 +41,16 @@ V2X_Switch_text = "V2X Switch"
 Lateral_Switch_text = "Lateral Switch Switch"
 Longitudinal_Switch_text = "Longitudinal Switch Switch"
 
+#========================== possible future thing ==========================
+# maybe create a dictionary to store the buttons on scrollable button wheel
+scroll_buttons = {}
+#===========================================================================
 
-# =======================================================================
+# dictionary to store icon buttons
+icon_buttons = {}
+# ====================================================================================
 
-def toggle_button_state(button, button_id, color_key, fg_blink_color=None, physical_button_press=None):
+def toggle_button_state(button, button_id, color_key, fg_blink_color=None, physical_button_press=None, icon_update_state=None):
     """Generalized function to toggle button states using color indexes."""
     current_state = button_states[button_id]
 
@@ -52,11 +58,14 @@ def toggle_button_state(button, button_id, color_key, fg_blink_color=None, physi
     color_indexes = color_keys.get(color_key, color_keys["3_state"])  # Default to 3_state if not found
     state_count = len(color_indexes)
 
+    # for scrollable buttons pressed
+    # ACC
     if physical_button_press == 1 and button_id == 4:
         if current_state == 1:
             current_state = 1
         else:
             current_state = (current_state - 1) % state_count
+    # AIN and LCC
     if physical_button_press == 1 and (button_id == 0 or button_id ==  3):
         #print("in physical button press: ",current_state)
         if current_state == 0:
@@ -64,8 +73,11 @@ def toggle_button_state(button, button_id, color_key, fg_blink_color=None, physi
         else:
             current_state = (current_state - 1) % state_count
 
-    new_state = (current_state + 1) % state_count  # Go through states
-    #print(new_state)
+    if icon_update_state is not None:
+        new_state = icon_update_state
+    else:
+        new_state = (current_state + 1) % state_count  # Go through states
+        # #print(new_state)
 
     bg_color, fg_color = color_states[color_indexes[new_state]]  # Get colors using index
 
@@ -80,6 +92,19 @@ def toggle_button_state(button, button_id, color_key, fg_blink_color=None, physi
         blink_button(button, button_id, fg_blink_color)
     elif state_count == 3 and new_state == 2 and button_id > 25:  # Blinking for 3-state icons
         blink_button(button, button_id, fg_blink_color)
+
+    if button_id < 5:
+        if button_id == 0:
+            update_icons(ain_state=button_states[button_id])
+        if button_id == 1:
+            update_icons(dms_state=button_states[button_id])
+        if button_id == 2:
+            update_icons(dyno_state=button_states[button_id])
+        if button_id == 3:
+            update_icons(lcc_state=button_states[button_id])
+        if button_id == 4:
+            update_icons(acc_state=button_states[button_id])
+
 
 
 def add_toggle_button(frame, text, button_id, color_key="3_state", fg_blink_color=None,
@@ -112,26 +137,72 @@ def add_toggle_button(frame, text, button_id, color_key="3_state", fg_blink_colo
     button_states[button_id] = 0
     return button
 
+def update_icons(ain_state=None, dms_state=None, dyno_state=None, lcc_state=None, acc_state=None):
+    if ain_state is not None:
+        toggle_button_state(icon_buttons["ain"], 53, "4_state", "darkorange",
+                            icon_update_state=ain_state)
+    if dms_state is not None:
+        if dms_state > 0:
+            toggle_button_state(icon_buttons["dms"], 54, "icon_3state_green", "darkorange",
+                            icon_update_state=1)
+        else:
+            toggle_button_state(icon_buttons["dms"], 54, "icon_3state_green", "darkorange",
+                                icon_update_state=dms_state)
+    if dyno_state is not None:
+        if dyno_state > 0:
+            toggle_button_state(icon_buttons["dyno_request"], 61, "icon_state", "white",
+                            icon_update_state=1)
+        else:
+            toggle_button_state(icon_buttons["dyno_request"], 61, "icon_state", "white",
+                            icon_update_state=dyno_state)
+    if lcc_state is not None:
+        toggle_button_state(icon_buttons["lcc"], 63, "4_state", "darkorange",
+                            icon_update_state=lcc_state)
+    if acc_state is not None:
+        toggle_button_state(icon_buttons["acc"], 52, "4_state", "darkorange",
+                            icon_update_state=acc_state)
+
 def check_if_button_can_do_something(button, button_id, color_key, fg_blink_color=None, button_press=None, text_box=None,
                                      ain_button=None,lcc_button=None):
     # AIN, (automatic intersection navigation) check: v2x, ACC, & speed < 35
     if button_id == 0:
-        print("in ACC button_id")
+        print("in AIN button_id")
         fault_messages_text = default_fault_messages_text
+        if lateral_switch_var and button_states[4] == 2 and speed_var < 35:
+            print("passed AIN condition check")
+            # toggle if lateral switch, ACC, lane detected, speed < 35
+            if button_states[button_id] == 1:
+                # print("AIN ON: ", button_id, "\n", button_states[button_id])
+                print("AIN ON")
+                toggle_button_state(button, button_id, color_key)
+            else:
+                print("AIN Standby")
+                button_states[button_id] = 0
+                toggle_button_state(button, button_id, color_key)
+        else:
+            print("failed AIN condition check")
+            fault_messages_text = "Cannot Enable AIN.\nV2X Switch and ACC not ON\nSpeed must be < 35"
+            button_states[button_id] = 2
+            toggle_button_state(button, button_id, color_key)
 
-        toggle_button_state(button, button_id, fg_blink_color,button_press)
-    # DMS, (driver monitoring system), check:
+        if text_box:
+            text_box.config(state="normal")
+            text_box.delete("1.0", tk.END)
+            text_box.insert("1.0", fault_messages_text)
+            text_box.config(state="disabled")
+
+    # DMS, (driver monitoring system), check:.... there is no DMS button on rules
     elif button_id == 1:
-        print("in ACC button_id")
+        print("in DMS button_id")
         fault_messages_text = default_fault_messages_text
-
         toggle_button_state(button, button_id, fg_blink_color)
+
     # DYNO, check: ??
     elif button_id == 2:
-        print("in ACC button_id")
+        print("in DYNO button_id")
         fault_messages_text = default_fault_messages_text
-
         toggle_button_state(button, button_id, fg_blink_color)
+
     # LCC, (lane centering control) check: lateral switch, ACC, lane detected, speed < 35, centered in lane
     elif button_id == 3:
         print("in LCC button_id")
@@ -158,6 +229,7 @@ def check_if_button_can_do_something(button, button_id, color_key, fg_blink_colo
             text_box.delete("1.0", tk.END)
             text_box.insert("1.0", fault_messages_text)
             text_box.config(state="disabled")
+
     # ACC/CACC, (Adaptive Cruise Control/Eco-Cooperative Adaptive Cruise), check: longitudinal & v2x switch, ACC button press
     elif button_id == 4:
         # first test with toggle logic
@@ -180,7 +252,7 @@ def check_if_button_can_do_something(button, button_id, color_key, fg_blink_colo
             toggle_button_state(ain_button, 0, color_key)
             button_states[3] = 2
             toggle_button_state(lcc_button, 3, color_key)
-            
+
         # update text box
         if text_box:
             text_box.config(state="normal")
@@ -197,7 +269,6 @@ def blink_button(button, button_id, fg_blink_color):
         new_fg = fg_blink_color if current_fg == "gray" else "gray"
         button.config(fg=new_fg)
         button.after(500, lambda: blink_button(button, button_id, fg_blink_color))
-
 
 def on_switch_print(button_id, button):
     """Toggle text color of the switches."""
@@ -261,7 +332,7 @@ def main():
 
     scrollbar.pack(side="right", fill="y")
     canvas.pack(side="left", fill="both", expand=True)
-    
+
     # Middle frame with grid of icons
     middle_frame = tk.Frame(paned_window, bg="black")
     paned_window.add(middle_frame)
@@ -280,42 +351,42 @@ def main():
 
     # Add buttons to the scrollable frame
     ain_button = add_toggle_button(scrollable_frame, "AIN", 0, "3_state", text_box=text_box)
-    dms_button = add_toggle_button(scrollable_frame, "DMS", 1, "3_state", text_box=text_box)
-    dyno_button = add_toggle_button(scrollable_frame, "DYNO", 2, "3_state", text_box=text_box)
+    dms_button = add_toggle_button(scrollable_frame, "DMS", 1, "3_state")
+    dyno_button = add_toggle_button(scrollable_frame, "DYNO", 2, "3_state")
     lcc_button = add_toggle_button(scrollable_frame, "LCC", 3, "3_state", text_box=text_box)
     acc_button = add_toggle_button(scrollable_frame, "ACC", 4, "3_state", text_box=text_box,
                                    ain_button=ain_button,lcc_button=lcc_button)
 
     # Add icon buttons
-    add_toggle_button(grid_container, "MIL\nIcon", 50, "icon_3state_orange",
+    icon_buttons["mil"] = add_toggle_button(grid_container, "MIL\nIcon", 50, "icon_3state_orange",
                       "darkorange", None,1,0 ,0 )
-    add_toggle_button(grid_container, "Vehicle\nAhead\nIcon",51, "icon_3state_red",
+    icon_buttons["vehicle_ahead"] = add_toggle_button(grid_container, "Vehicle\nAhead\nIcon",51, "icon_3state_red",
                       "red", None, 1, 0,1)
-    add_toggle_button(grid_container, "ACC\nIcon", 52, "4_state", "darkorange",
+    icon_buttons["acc"] = add_toggle_button(grid_container, "ACC\nIcon", 52, "4_state", "darkorange",
                       None, 1, 0,2)
-    add_toggle_button(grid_container, "AIN\nIcon", 53, "4_state", "darkorange",
+    icon_buttons["ain"] = add_toggle_button(grid_container, "AIN\nIcon", 53, "4_state", "darkorange",
                       None,1, 0,3)
-    add_toggle_button(grid_container, "DMS\nIcon", 54, "icon_3state_green",
+    icon_buttons["dms"] = add_toggle_button(grid_container, "DMS\nIcon", 54, "icon_3state_green",
                       "darkorange", None,1, 0, 4)
 
-    add_toggle_button(grid_container, "Battery\nHeat\nIcon", 55, "icon_3state_red",
+    icon_buttons["battery"] = add_toggle_button(grid_container, "Battery\nHeat\nIcon", 55, "icon_3state_red",
                       "red", None, 1, 1, 0)
-    add_toggle_button(grid_container, "PCM\nHeat\nIcon", 56, "icon_3state_red", "red",
+    icon_buttons["pcm"] = add_toggle_button(grid_container, "PCM\nHeat\nIcon", 56, "icon_3state_red", "red",
                       None,1, 1, 1)
-    add_toggle_button(grid_container, "V2X\nIcon", 57, "icon_3state_green", "green",
+    icon_buttons["v2x"] = add_toggle_button(grid_container, "V2X\nIcon", 57, "icon_3state_green", "green",
                       None,1, 1, 2)
-    add_toggle_button(grid_container, "Long\nControl\nIcon", 58, "icon_3state_green",
+    icon_buttons["long_control"] = add_toggle_button(grid_container, "Long\nControl\nIcon", 58, "icon_3state_green",
                       "green", None,1, 1, 3)
-    add_toggle_button(grid_container, "Lat\nControl\nIcon", 59, "icon_3state_green",
+    icon_buttons["lat_control"] = add_toggle_button(grid_container, "Lat\nControl\nIcon", 59, "icon_3state_green",
                       "green", None,1, 1, 4)
 
-    add_toggle_button(grid_container, "UDP\nIcon", 60, "icon_3state_orange",
+    icon_buttons["udp"] = add_toggle_button(grid_container, "UDP\nIcon", 60, "icon_3state_orange",
                       "darkorange", None,1, 2, 0)
-    add_toggle_button(grid_container, "DYNO\nREQ\nIcon", 61, "icon_state", "white",
+    icon_buttons["dyno_request"] = add_toggle_button(grid_container, "DYNO\nREQ\nIcon", 61, "icon_state", "white",
                       None,1, 2, 1)
-    add_toggle_button(grid_container, "SIM\nOBJ\nIcon", 62, "icon_state", "white",
+    icon_buttons["sim_object"] = add_toggle_button(grid_container, "SIM\nOBJ\nIcon", 62, "icon_state", "white",
                       None,1, 2, 2)
-    add_toggle_button(grid_container, "LCC\nIcon", 63, "4_state", "darkorange",
+    icon_buttons["lcc"] = add_toggle_button(grid_container, "LCC\nIcon", 63, "4_state", "darkorange",
                       None,1, 2, 3)
 
     # Add text displays
@@ -345,7 +416,7 @@ def main():
 
     switch_frame = tk.Frame(Non_HMI_Window, bg="black")
     switch_frame.grid(row=1, column=0, columnspan=3, pady=5)
-    
+
     # physical switches
     v2xSwitch = tk.Checkbutton(switch_frame, text=V2X_Switch_text, variable=v2x_switch_var,
                                onvalue=1, offvalue=0, bg="black", fg="gray", relief="raised",
