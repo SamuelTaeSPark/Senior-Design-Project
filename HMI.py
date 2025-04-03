@@ -2,9 +2,9 @@ import tkinter as tk
 
 button_states = {}
 # Initialize button states for 101-103
-button_states[101] = 0
-button_states[102] = 0
-button_states[103] = 0
+button_states[101] = 0 # v2x
+button_states[102] = 0 # lat
+button_states[103] = 0 # long
 
 # ========================== Centralized Color System ==========================
 # Button states dictionary (tracks the state of each button)
@@ -33,6 +33,7 @@ default_fault_messages_text = "No Messages"
 fault_messages_text = default_fault_messages_text
 
 speed_var = 0
+last_set_speed_var = 0
 
 v2x_switch_var = 0
 lateral_switch_var = 0
@@ -41,13 +42,17 @@ V2X_Switch_text = "V2X Switch"
 Lateral_Switch_text = "Lateral Switch Switch"
 Longitudinal_Switch_text = "Longitudinal Switch Switch"
 
-#========================== possible future thing ==========================
-# maybe create a dictionary to store the buttons on scrollable button wheel
-scroll_buttons = {}
 #===========================================================================
+# dictionary to store the buttons on scrollable button wheel
+scroll_buttons = {}
 
 # dictionary to store icon buttons
 icon_buttons = {}
+
+#============================ for the future ===============================
+# dictionary to store second window buttons
+second_window_buttons = {}
+#===========================================================================
 # ====================================================================================
 
 def toggle_button_state(button, button_id, color_key, fg_blink_color=None, physical_button_press=None, icon_update_state=None):
@@ -164,6 +169,8 @@ def update_icons(ain_state=None, dms_state=None, dyno_state=None, lcc_state=None
 
 def check_if_button_can_do_something(button, button_id, color_key, fg_blink_color=None, button_press=None, text_box=None,
                                      ain_button=None,lcc_button=None):
+    global speed_var
+
     # AIN, (automatic intersection navigation) check: v2x, ACC, & speed < 35
     if button_id == 0:
         print("in AIN button_id")
@@ -262,6 +269,56 @@ def check_if_button_can_do_something(button, button_id, color_key, fg_blink_colo
         '''#toggling buttons
         toggle_4_button_grid(button, button_id, fg_blink_color,button_press)'''
 
+    # check the SET- button press condition
+    elif button_id == 201:
+        print("in SET- button_id")
+        fault_messages_text = default_fault_messages_text
+        if button_states[4] == 1:
+            print("Passed ACC State Check")
+            toggle_button_state(scroll_buttons["acc"], 4, "3_state", physical_button_press=1)
+            toggle_button_state(scroll_buttons["ain"], 0, "3_state", physical_button_press=1)
+            if button_states[102] == 1:
+                print("Passed Lateral State Check")
+                toggle_button_state(scroll_buttons["lcc"], 3, "3_state", physical_button_press=1)
+            else:
+                fault_messages_text="Cannot put LCC on Standby.\nLateral Switch and ACC not ON\nSpeed must be < 35"
+        elif button_states[4] == 2:
+            print("need to add speed number change on second window")
+            speed_var = max(speed_var+1, 0)
+        else:
+            fault_messages_text = "Cannot Enable ACC.\nACC not on Standby Mode"
+
+        if text_box:
+            text_box.config(state="normal")
+            text_box.delete("1.0", tk.END)
+            text_box.insert("1.0", fault_messages_text)
+            text_box.config(state="disabled")
+
+    # check RES+ button press condition
+    elif button_id == 202:
+        print("in RES+ button_id")
+        fault_messages_text = default_fault_messages_text
+        if button_states[4] == 1:
+            print("Passed ACC State Check")
+            toggle_button_state(scroll_buttons["acc"], 4, "3_state", physical_button_press=1)
+            toggle_button_state(scroll_buttons["ain"], 0, "3_state", physical_button_press=1)
+            if button_states[102] == 1:
+                print("Passed Lateral State Check")
+                toggle_button_state(scroll_buttons["lcc"], 3, "3_state", physical_button_press=1)
+            else:
+                fault_messages_text = "Cannot put LCC on Standby.\nLateral Switch and ACC not ON\nSpeed must be < 35"
+        elif button_states[4] == 2:
+            print("need to add speed number change on second window")
+            speed_var = max(speed_var+1, 0)
+        else:
+            fault_messages_text = "Cannot Enable ACC.\nACC not on Standby Mode"
+
+        if text_box:
+            text_box.config(state="normal")
+            text_box.delete("1.0", tk.END)
+            text_box.insert("1.0", fault_messages_text)
+            text_box.config(state="disabled")
+
 def blink_button(button, button_id, fg_blink_color):
     """Makes the button blink when in active state."""
     if button_states[button_id] in [2, 3]:  # Active states that should blink
@@ -350,12 +407,12 @@ def main():
         grid_container.columnconfigure(i, weight=1)
 
     # Add buttons to the scrollable frame
-    ain_button = add_toggle_button(scrollable_frame, "AIN", 0, "3_state", text_box=text_box)
-    dms_button = add_toggle_button(scrollable_frame, "DMS", 1, "3_state")
-    dyno_button = add_toggle_button(scrollable_frame, "DYNO", 2, "3_state")
-    lcc_button = add_toggle_button(scrollable_frame, "LCC", 3, "3_state", text_box=text_box)
-    acc_button = add_toggle_button(scrollable_frame, "ACC", 4, "3_state", text_box=text_box,
-                                   ain_button=ain_button,lcc_button=lcc_button)
+    scroll_buttons["ain"] = add_toggle_button(scrollable_frame, "AIN", 0, "3_state", text_box=text_box)
+    scroll_buttons["dms"] = add_toggle_button(scrollable_frame, "DMS", 1, "3_state")
+    scroll_buttons["dyno"] = add_toggle_button(scrollable_frame, "DYNO", 2, "3_state")
+    scroll_buttons["lcc"] = add_toggle_button(scrollable_frame, "LCC", 3, "3_state", text_box=text_box)
+    scroll_buttons["acc"] = add_toggle_button(scrollable_frame, "ACC", 4, "3_state", text_box=text_box,
+                                   ain_button=scroll_buttons["ain"],lcc_button=scroll_buttons["lcc"])
 
     # Add icon buttons
     icon_buttons["mil"] = add_toggle_button(grid_container, "MIL\nIcon", 50, "icon_3state_orange",
@@ -456,19 +513,21 @@ def main():
     set_and_res_frame = tk.Frame(Non_HMI_Window, bg="black")
     set_and_res_frame.grid(row=4, column=0, columnspan=3, pady=10)
 
+    # will be button_id 201
     set_speed_button = tk.Button(set_and_res_frame, text="SET-", borderwidth=10, highlightthickness=0, width=6,
                                  height=1, font=("Arial", 12), bg="black", fg="white", activebackground="gray",
                                  activeforeground="black",
-                                 command=lambda: [
-                                     toggle_button_state(acc_button, 4, "3_state",physical_button_press=1),
-                                     toggle_button_state(lcc_button, 3, "3_state",physical_button_press=1),
-                                     toggle_button_state(ain_button, 0, "3_state",physical_button_press=1),
-                                 ])
+                                 command=lambda: (check_if_button_can_do_something(None, 201,
+                                                                                   None, text_box=text_box)))
     set_speed_button.grid(row=0, column=0, padx=5, pady=5)
 
+
+    # will be button_id 202
     reset_speed_button = tk.Button(set_and_res_frame, text="RES+", borderwidth=10, highlightthickness=0, width=6,
                                    height=1, font=("Arial", 12), bg="black", fg="white", activebackground="gray",
-                                   activeforeground="black")
+                                   activeforeground="black",
+                                   command=lambda: (check_if_button_can_do_something(None, 202,
+                                                                                     None, text_box=text_box)))
     reset_speed_button.grid(row=0, column=2, padx=5, pady=5)
 
     # Centering the frames in the window
